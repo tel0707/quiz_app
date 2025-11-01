@@ -1,0 +1,11 @@
+{% extends 'quiz/base.html' %}
+{% block content %}
+<h2>Haqiqatan o‘chirmoqchimisiz?</h2>
+<p><strong>{{ object.name }}</strong> quiz turini o‘chirishni tasdiqlang.</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Ha, o‘chirish</button>
+    <a href="{% url 'quiztype_list' %}" class="btn btn-secondary">Bekor qilish</a>
+</form>
+{% endblock %}

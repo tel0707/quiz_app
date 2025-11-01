@@ -1,0 +1,21 @@
+{% extends 'quiz/base.html' %}
+{% block content %}
+<h2>{% if form.instance.pk %}Tahrirlash{% else %}Yangi Quiz Turi{% endif %}</h2>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        {{ form.name.label_tag }}
+        {{ form.name }}
+        {% if form.name.errors %}
+            <div class="text-danger">{{ form.name.errors }}</div>
+        {% endif %}
+    </div>
+    <div class="form-check mb-3">
+        {{ form.is_active }}
+        {{ form.is_active.label_tag }}
+    </div>
+    <button type="submit" class="btn btn-primary">Saqlash</button>
+    <a href="{% url 'quiztype_list' %}" class="btn btn-secondary">Bekor qilish</a>
+</form>
+{% endblock %}

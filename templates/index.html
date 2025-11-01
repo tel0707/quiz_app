@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% for savol in savollar %}
+    <ul>
+        <li>
+            {{ savol.quiz_type }}
+            <p> {{ savol }} </p>
+            {% for javob in javoblar %}
+                {% if javob.question == savol %}
+
+                    <ul>
+                        <li>
+                            {% if javob.is_correct %}
+                          <span style="color: darkgreen"> <b>{{ javob }}</b>  </span>
+                                {% else %}
+                                {{ javob }}
+                                {% endif %}
+                        </li>
+                    </ul>
+
+                {% endif %}
+            {% endfor %}
+
+
+        </li>
+    </ul>
+
+{% endfor %}
+
+</body>
+</html>
