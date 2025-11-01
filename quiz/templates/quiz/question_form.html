@@ -1,10 +1,124 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'quiz/base.html' %}
+{% block content %}
+<h2>{% if form.instance.pk %}Tahrirlash{% else %}Yangi savol{% endif %}</h2>
+<!-- question_form.html -->
+
+<form method="post" id="questionForm">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-12 mb-3">
+            {{ form.quiz_type.label_tag }}
+            {{ form.quiz_type }}
+            {% if form.quiz_type.errors %}
+                <div class="text-danger">{{ form.quiz_type.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form.name.label_tag }}
+        {{ form.name }}
+        {% if form.name.errors %}
+            <div class="text-danger">{{ form.name.errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-check mb-3">
+        {{ form.is_active }}
+        {{ form.is_active.label_tag }}
+    </div>
+
+    <hr>
+    <h4>Javoblar</h4>
+    {{ formset.management_form }}
+
+    <div id="formset-container">
+        {% for form in formset %}
+        <div class="card mb-2 p-3 formset-row">
+            <div class="row">
+                <div class="col-md-7">
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="text-danger">{{ form.name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-2 text-center">
+                    <label class="form-check-label">{{ form.is_correct }} To'g'ri</label>
+                </div>
+                <div class="col-md-2 text-center">
+                    <label class="form-check-label">{{ form.is_active }} Faol</label>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-danger btn-sm remove-formset">O'chirish</button>
+                </div>
+            </div>
+            {{ form.id }}
+            {{ form.DELETE }}
+        </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" id="add-formset" class="btn btn-secondary mb-3">+ Javob qo'shish</button>
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Saqlash</button>
+        <a href="{% url 'question_list' %}" class="btn btn-secondary">Bekor qilish</a>
+    </div>
+</form>
+
+<!-- Dinamik formset JS -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formsetContainer = document.getElementById('formset-container');
+    const addButton = document.getElementById('add-formset');
+    const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
+
+    let formCount = parseInt(totalForms.value);
+
+    addButton.addEventListener('click', function() {
+        if (formCount >= 20) {
+            alert('Maksimum 20 ta javob qo‘shish mumkin!');
+            return;
+        }
+        const newForm = formsetContainer.children[0].cloneNode(true);
+        newForm.innerHTML = newForm.innerHTML
+            .replace(/form-\d+/g, `form-${formCount}`)
+            .replace(/__prefix__/g, formCount);
+        newForm.querySelectorAll('input, textarea').forEach(input => {
+            input.value = '';
+            if (input.type === 'checkbox') input.checked = false;
+        });
+        formsetContainer.appendChild(newForm);
+        totalForms.value = formCount + 1;
+        formCount++;
+    });
+
+    formsetContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-formset')) {
+            const row = e.target.closest('.formset-row');
+            const deleteInput = row.querySelector('input[name$="-DELETE"]');
+            if (deleteInput) {
+                deleteInput.checked = true;
+                row.style.display = 'none';
+            } else {
+                row.remove();
+                totalForms.value = parseInt(totalForms.value) - 1;
+            }
+        }
+    });
+
+    // Oxirgi tanlangan quiz_type ni yuklash
+    const lastQuizType = localStorage.getItem('lastQuizTypeId');
+    if (lastQuizType) {
+        const select = document.querySelector('#id_quiz_type');
+        select.value = lastQuizType;
+    }
+
+    // Saqlashdan oldin saqlash
+    document.getElementById('questionForm').addEventListener('submit', function() {
+        const selected = document.querySelector('#id_quiz_type').value;
+        localStorage.setItem('lastQuizTypeId', selected);
+    });
+});
+</script>
+{% endblock %}

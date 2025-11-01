@@ -1,9 +1,26 @@
+<!-- quiz/navbar.html -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
     <div class="container-fluid">
         <a class="navbar-brand" href="{% url 'quiztype_list' %}">Quiz Tizimi</a>
         <div class="navbar-nav">
-            <a class="nav-link" href="{% url 'quiztype_list' %}">Quiz turlari</a>
-            <a class="nav-link" href="{% url 'quiztype_create' %}">+ Yangi tur</a>
+            <a class="nav-link" href="{% url 'quiztype_list' %}">Savol turlari</a>
+            {% if user.is_superuser %}
+                <a class="nav-link" href="{% url 'quiztype_create' %}">+ Yangi tur</a>
+            {% endif %}
+        </div>
+        <div class="navbar-nav">
+            <a class="nav-link" href="{% url 'question_list' %}">Savollar</a>
+            {% if user.is_superuser %}
+                <a class="nav-link" href="{% url 'question_create' %}">+ Yangi savol</a>
+            {% endif %}
+        </div>
+        <div class="ms-auto">
+            {% if user.is_authenticated %}
+                <span class="navbar-text me-3">{{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="btn btn-outline-light btn-sm">Chiqish</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">Kirish</a>
+            {% endif %}
         </div>
     </div>
 </nav>

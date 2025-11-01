@@ -1,10 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'quiz/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Savollar</h2>
+
+{% if user.is_superuser %}
+    <a href="{% url 'question_create' %}" class="btn btn-success mb-3">+ Yangi savol</a>
+{% endif %}
+
+<table class="table table-striped table-hover">
+    <thead class="table-primary text-white">
+        <tr>
+            <th scope="col" style="width: 5%;">#</th>
+            <th scope="col" style="width: 45%;">Savol</th>
+            <th scope="col" style="width: 10%;">Savol turi</th>
+            <th scope="col" style="width: 10%;">Javoblar soni</th>
+            <th scope="col" style="width: 10%;">Multiple</th>
+            {% if user.is_superuser %}
+                <th scope="col" style="width: 10%;">Tahrirlash</th>
+                <th scope="col" style="width: 10%;">O‘chirish</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for q in questions %}
+        <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td>{{ q.name|truncatewords:10 }}</td>
+            <td>{{ q.quiz_type.name }}</td>
+            <td class="text-center">{{ q.answers.count }}</td>
+            <td class="text-center">
+                {% if q.is_multiple_choice %}Ha{% else %}Yo'q{% endif %}
+            </td>
+            {% if user.is_superuser %}
+                <td class="text-center">
+                    <a href="{% url 'question_edit' q.pk %}"
+                       class="btn btn-sm btn-warning">Tahrirlash</a>
+                </td>
+                <td class="text-center">
+                    <a href="{% url 'question_delete' q.pk %}"
+                       class="btn btn-sm btn-danger"
+                       onclick="return confirm('{{ q.name|escapejs|truncatewords:5 }} savolini o‘chirmoqchimisiz?')">
+                       O‘chirish</a>
+                </td>
+            {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="{% if user.is_superuser %}7{% else %}5{% endif %}"
+                class="text-center py-4 text-muted">
+                Hech nima topilmadi.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
