@@ -1,0 +1,24 @@
+{% extends 'quiz/base.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h3>📤 Word fayldan savollarni import qilish</h3>
+  <hr>
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-success">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+  <form method="post" enctype="multipart/form-data" class="mt-3">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">{{ form.quiz_type.label }}</label>
+      {{ form.quiz_type }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">{{ form.file.label }}</label>
+      {{ form.file }}
+    </div>
+    <button type="submit" class="btn btn-primary">Yuklash</button>
+  </form>
+</div>
+{% endblock %}

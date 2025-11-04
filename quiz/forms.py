@@ -4,6 +4,7 @@ from django.forms import inlineformset_factory
 from .models import Question, Answer, QuizType
 
 
+
 class QuizTypeForm(forms.ModelForm):
     class Meta:
         model = QuizType
@@ -66,7 +67,22 @@ AnswerFormSet = inlineformset_factory(
 AnswerUpdateFormSet = inlineformset_factory(
     Question, Answer,
     form=AnswerForm,
-    extra=0,          # 0 ta bo'sh maydon
+    extra=2,          # 0 ta bo'sh maydon
     can_delete=True,  # o'chirish imkoniyati
     max_num=20        # maksimum 20 ta javob
 )
+
+
+
+
+
+
+class UploadWordForm(forms.Form):
+    quiz_type = forms.ModelChoiceField(
+        queryset=QuizType.objects.filter(is_active=True),
+        label="Test turi (Quiz nomi)",
+        empty_label="Tanlang...",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    file = forms.FileField(label="Word faylni yuklang (.docx)")
+

@@ -1,11 +1,10 @@
-<!-- quiz/quiztype_list.html -->
 {% extends 'quiz/base.html' %}
 {% block content %}
-<h2>Quiz Turlari</h2>
+<h2>Savol Turlari</h2>
 
 <!-- Faqat superuser ko‘radi -->
 {% if user.is_superuser %}
-    <a href="{% url 'quiztype_create' %}" class="btn btn-success mb-3">+ Yangi Quiz Turi</a>
+    <a href="{% url 'quiztype_create' %}" class="btn btn-success mb-3">+ Yangi Savol Turi</a>
 {% endif %}
 
 <table class="table table-striped">
@@ -22,7 +21,7 @@
     <tbody>
         {% for qt in quiztypes %}
         <tr>
-            <td>{{ forloop.counter }}</td>
+            <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
             <td>{{ qt.name }}</td>
             <td>
                 <span class="badge bg-{% if qt.is_active %}success{% else %}secondary{% endif %}">
@@ -33,12 +32,56 @@
             <td>
                 <a href="{% url 'quiztype_edit' qt.pk %}" class="btn btn-sm btn-warning">Tahrirlash</a>
                 <a href="{% url 'quiztype_delete' qt.pk %}" class="btn btn-sm btn-danger">O‘chirish</a>
-            </td>
             {% endif %}
+                <a href="{% url 'start_quiz' qt.pk %}" class="btn btn-sm btn-primary">Testni boshlash</a>
+            </td>
         </tr>
         {% empty %}
-        <tr><td colspan="{% if user.is_superuser %}4{% else %}3{% endif %}" class="text-center">Hech nima topilmadi.</td></tr>
+        <tr>
+            <td colspan="{% if user.is_superuser %}4{% else %}3{% endif %}" class="text-center">
+                Hech nima topilmadi.
+            </td>
+        </tr>
         {% endfor %}
     </tbody>
 </table>
+
+<!-- PAGINATION BLOKI -->
+{% if is_paginated %}
+<nav aria-label="Sahifalash navigatsiyasi">
+    <ul class="pagination justify-content-center">
+
+        <!-- Oldingi sahifa -->
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Oldingi">
+                &laquo;
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
+
+        <!-- Sahifa raqamlari -->
+        {% for i in paginator.page_range %}
+            {% if page_obj.number == i %}
+                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+            {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Keyingi sahifa -->
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Keyingi">
+                &raquo;
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}

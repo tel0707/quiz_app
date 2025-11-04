@@ -11,4 +11,7 @@ urlpatterns = [
     path('questions/create/', views.QuestionCreateView.as_view(), name='question_create'),
     path('questions/<int:pk>/edit/', views.QuestionUpdateView.as_view(), name='question_edit'),
     path('questions/<int:pk>/delete/', views.QuestionDeleteView.as_view(), name='question_delete'),
+    path('questions/<int:pk>/start/', views.GenerateQuiz, name='start_quiz'),
+    path('upload-quiz/', views.upload_quiz_from_word, name='upload_quiz_from_word'),
+
 ]

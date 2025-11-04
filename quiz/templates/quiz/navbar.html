@@ -12,6 +12,9 @@
             <a class="nav-link" href="{% url 'question_list' %}">Savollar</a>
             {% if user.is_superuser %}
                 <a class="nav-link" href="{% url 'question_create' %}">+ Yangi savol</a>
+                <a class="nav-link" href="{% url 'upload_quiz_from_word' %}">Savol yuklash</a>
+
+
             {% endif %}
         </div>
         <div class="ms-auto">
