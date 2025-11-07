@@ -45,7 +45,8 @@
       <tbody>
         {% for qt in quiztypes %}
           <tr>
-            <td data-label="#">{% increment forloop.counter0 page_obj.start_index %}</td>
+            <!-- Tuzatilgan qator -->
+            <td data-label="#">{{ forloop.counter0|add:page_obj.start_index|add:1 }}</td>
 
             <td data-label="Nomi">{{ qt.name }}</td>
 
@@ -59,7 +60,7 @@
               {% if user.is_superuser %}
                 <a href="{% url 'quiztype_edit' qt.pk %}"
                    class="btn btn-sm btn-warning mb-1">Tahrirlash</a>
-                <a href="{% url 'quiztype_edit' qt.pk %}"
+                <a href="{% url 'quiztype_delete' qt.pk %}"
                    class="btn btn-sm btn-danger mb-1">O‘chirish</a>
               {% endif %}
 
@@ -97,7 +98,6 @@
   {% if is_paginated %}
     <nav aria-label="Sahifalash navigatsiyasi" class="mt-4">
       <ul class="pagination justify-content-center flex-wrap">
-
         {% if page_obj.has_previous %}
           <li class="page-item">
             <a class="page-link" href="?page={{ page_obj.previous_page_number }}"
@@ -130,12 +130,4 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-  // forloop.counter0 + page_obj.start_index → to‘g‘ri indeks
-  document.querySelectorAll('td[data-label="#"]').forEach(td => {
-    const idx = parseInt(td.textContent);
-    td.textContent = idx + 1;
-  });
-</script>
-{% endblock %}
+<!-- JavaScript kerak emas -->
