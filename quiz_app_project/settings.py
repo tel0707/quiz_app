@@ -39,7 +39,7 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
-    'jazzmin', #tashqi app. Admin panelini yangicha ko'rinishi uchun.
+    # 'jazzmin', #tashqi app. Admin panelini yangicha ko'rinishi uchun.
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
