@@ -28,7 +28,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-default")
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 # 🚀 Railway domeni ruxsat etilgan hostlar
-ALLOWED_HOSTS = ['.railway.app', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['*','.railway.app', 'localhost', '127.0.0.1']
 
 # 🚨 CSRF himoyasi uchun ishonchli domenlar
 CSRF_TRUSTED_ORIGINS = [
