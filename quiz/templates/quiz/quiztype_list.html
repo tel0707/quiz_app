@@ -1,133 +1,175 @@
 {% extends 'quiz/base.html' %}
-{% load static %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">Savol Turlari</h2>
 
-{% block extra_head %}
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet">
+            <!-- Faqat superuser ko'radi -->
+            {% if user.is_superuser %}
+                <a href="{% url 'quiztype_create' %}" class="btn btn-success mb-3">
+                    <i class="bi bi-plus-circle"></i> Yangi Savol Turi
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col" class="text-nowrap">#</th>
+                            <th scope="col" class="text-nowrap">Nomi</th>
+                            <th scope="col" class="text-nowrap">Holat</th>
+                            {% if user.is_superuser %}
+                                <th scope="col" class="text-nowrap">Amallar</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for qt in quiztypes %}
+                        <tr>
+                            <td class="text-nowrap">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                            <td class="fw-bold">{{ qt.name }}</td>
+                            <td>
+                                <span class="badge bg-{% if qt.is_active %}success{% else %}secondary{% endif %}">
+                                    {% if qt.is_active %}Faol{% else %}Nofaol{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column flex-md-row gap-2 align-items-start align-items-md-center">
+                                    {% if user.is_superuser %}
+                                        <div class="d-flex gap-1">
+                                            <a href="{% url 'quiztype_edit' qt.pk %}" class="btn btn-sm btn-warning">
+                                                <i class="bi bi-pencil"></i> Tahrirlash
+                                            </a>
+                                            <a href="{% url 'quiztype_delete' qt.pk %}" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash"></i> O'chirish
+                                            </a>
+                                        </div>
+                                    {% endif %}
+
+                                    <form action="{% url 'start_quiz' qt.pk %}" method="get" class="d-flex flex-column flex-sm-row gap-2 align-items-start align-items-sm-center">
+                                        <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2">
+                                            <label for="count_{{ qt.pk }}" class="form-label mb-0 text-nowrap">Test soni:</label>
+                                            <select id="count_{{ qt.pk }}" name="count" class="form-select form-select-sm w-auto">
+                                                <option value="10">10</option>
+                                                <option value="20" selected>20</option>
+                                                <option value="30">30</option>
+                                                <option value="40">40</option>
+                                                <option value="50">50</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                                            <i class="bi bi-play-circle"></i> Testni boshlash
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="{% if user.is_superuser %}4{% else %}3{% endif %}" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                                    Hech nima topilmadi.
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGINATION BLOKI -->
+    {% if is_paginated %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <nav aria-label="Sahifalash navigatsiyasi">
+                    <ul class="pagination justify-content-center flex-wrap">
+
+                        <!-- Oldingi sahifa -->
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Oldingi">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="bi bi-chevron-left"></i>
+                                </span>
+                            </li>
+                        {% endif %}
+
+                        <!-- Sahifa raqamlari -->
+                        {% for i in paginator.page_range %}
+                            {% if page_obj.number == i %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ i }}</span>
+                                </li>
+                            {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        <!-- Keyingi sahifa -->
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Keyingi">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="bi bi-chevron-right"></i>
+                                </span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
 <style>
-  .badge {font-size: .85rem;}
-  .action-col {white-space: nowrap;}
-  @media (max-width: 576px) {
-    .table-responsive-stack tr {display: flex; flex-direction: column; margin-bottom: 1rem;}
-    .table-responsive-stack td,
-    .table-responsive-stack th {border: none !important;}
-    .table-responsive-stack thead {display: none;}
-    .table-responsive-stack td::before {content: attr(data-label); font-weight: bold; display: block; margin-bottom: .25rem;}
-    .action-col {margin-top: .5rem;}
-    .pagination {font-size: .9rem;}
-  }
+    /* Mobile-first responsive styles */
+    @media (max-width: 768px) {
+        .table-responsive {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+        }
+
+        .btn-sm {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .form-select-sm {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .d-flex.flex-column .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .pagination .page-link {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
+    }
 </style>
 {% endblock %}
-
-{% block content %}
-<div class="container py-4">
-
-  <h2 class="mb-4 text-center text-md-start">Savol Turlari</h2>
-
-  {% if user.is_superuser %}
-    <div class="mb-3 text-center text-md-start">
-      <a href="{% url 'quiztype_create' %}" class="btn btn-success btn-sm">
-        + Yangi Savol Turi
-      </a>
-    </div>
-  {% endif %}
-
-  <div class="table-responsive table-responsive-stack">
-    <table class="table table-striped align-middle">
-      <thead class="table-light">
-        <tr>
-          <th scope="col">#</th>
-          <th scope="col">Nomi</th>
-          <th scope="col">Holat</th>
-          <th scope="col" class="action-col">Amallar</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for qt in quiztypes %}
-          <tr>
-            <!-- Tuzatilgan qator -->
-            <td data-label="#">{{ forloop.counter0|add:page_obj.start_index|add:1 }}</td>
-
-            <td data-label="Nomi">{{ qt.name }}</td>
-
-            <td data-label="Holat">
-              <span class="badge bg-{% if qt.is_active %}success{% else %}secondary{% endif %}">
-                {% if qt.is_active %}Faol{% else %}Nofaol{% endif %}
-              </span>
-            </td>
-
-            <td data-label="Amallar" class="action-col">
-              {% if user.is_superuser %}
-                <a href="{% url 'quiztype_edit' qt.pk %}"
-                   class="btn btn-sm btn-warning mb-1">Tahrirlash</a>
-                <a href="{% url 'quiztype_delete' qt.pk %}"
-                   class="btn btn-sm btn-danger mb-1">O‘chirish</a>
-              {% endif %}
-
-              <form action="{% url 'start_quiz' qt.pk %}" method="get"
-                    class="d-inline">
-                <label for="count_{{ qt.pk }}" class="form-label visually-hidden">
-                  Test soni
-                </label>
-                <select id="count_{{ qt.pk }}" name="count"
-                        class="form-select form-select-sm d-inline w-auto me-1">
-                  <option value="10">10</option>
-                  <option value="20" selected>20</option>
-                  <option value="30">30</option>
-                  <option value="40">40</option>
-                  <option value="50">50</option>
-                </select>
-                <button type="submit"
-                        class="btn btn-sm btn-primary">
-                  Testni boshlash
-                </button>
-              </form>
-            </td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="4" class="text-center py-4">
-              Hech nima topilmadi.
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  {% if is_paginated %}
-    <nav aria-label="Sahifalash navigatsiyasi" class="mt-4">
-      <ul class="pagination justify-content-center flex-wrap">
-        {% if page_obj.has_previous %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}"
-               aria-label="Oldingi">&laquo;</a>
-          </li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-        {% endif %}
-
-        {% for i in paginator.page_range %}
-          {% if page_obj.number == i %}
-            <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-          {% elif i > page_obj.number|add:'-2' and i < page_obj.number|add:'3' %}
-            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
-          {% endif %}
-        {% endfor %}
-
-        {% if page_obj.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}"
-               aria-label="Keyingi">&raquo;</a>
-          </li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-        {% endif %}
-      </ul>
-    </nav>
-  {% endif %}
-
-</div>
-{% endblock %}
-
-<!-- JavaScript kerak emas -->
