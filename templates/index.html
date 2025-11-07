@@ -1,36 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-{% for savol in savollar %}
-    <ul>
-        <li>
-            {{ savol.quiz_type }}
-            <p> {{ savol }} </p>
-            {% for javob in javoblar %}
-                {% if javob.question == savol %}
+{% extends 'quiz/base.html' %}
+{% block content %}
+    <style>
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
 
-                    <ul>
-                        <li>
-                            {% if javob.is_correct %}
-                          <span style="color: darkgreen"> <b>{{ javob }}</b>  </span>
-                                {% else %}
-                                {{ javob }}
-                                {% endif %}
-                        </li>
-                    </ul>
+        td, th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
 
-                {% endif %}
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+    </style>
+    <h4>Assalomu alaykum</h4> {{ user. }}
+
+    <table>
+        <tr>
+            <th>Test raqami</th>
+            <th>olgan bali</th>
+            <th>Savol turi</th>
+            <th>Sana</th>
+        </tr>
+        <tr>
+            {% for test in my_test %}
+                <td>{{ test }}</td>
+                <td>{{ test.score }}</td>
+                <td>{{ test.quiz_type }}</td>
+                <td>{{ test.created |date:"d.m.Y H:i" }}</td>
+                </tr>
+
+
             {% endfor %}
+    </table>
 
-
-        </li>
-    </ul>
-
-{% endfor %}
-
-</body>
-</html>
+{% endblock %}

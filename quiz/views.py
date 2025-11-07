@@ -1,17 +1,22 @@
 # quiz/views.py
-
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from django.db.models import Prefetch, Case, When
 from .forms import QuizTypeForm, QuestionForm, AnswerFormSet, AnswerUpdateFormSet, UploadWordForm
-
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db import transaction
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from .models import QuizType, Question, Answer
 from docx import Document
 import re
+import random, json
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.db import transaction
+from django.utils import timezone
+from .models import QuizType, Question, Answer, GenerateQuiz, AnswerUsers, GenerateQuizQuestion
 
 
 
@@ -43,8 +48,6 @@ class QuizTypeCreateView(SuperuserRequiredMixin, SuccessMessageMixin, CreateView
     template_name = 'quiz/quiztype_form.html'
     success_url = reverse_lazy('quiztype_list')
     success_message = "Quiz turi muvaffaqiyatli qo‘shildi!"
-
-
 
 
 # --- Tahrirlash (faqat superuser) ---
@@ -201,17 +204,6 @@ class QuestionDeleteView(SuperuserRequiredMixin, SuccessMessageMixin, DeleteView
         messages.success(self.request, self.success_message)
         return super().form_valid(form)
 
-def GenerateQuiz(request, pk):
-
-    if QuizType.objects.get(pk=pk):
-        print(True)
-        pass
-
-    pass
-
-
-
-
 
 def upload_quiz_from_word(request):
     """
@@ -357,3 +349,225 @@ def upload_quiz_from_word(request):
         form = UploadWordForm()
 
     return render(request, "quiz/upload_quiz.html", {"form": form})
+
+
+
+
+# 🔹 TESTNI BOSHLASH
+# quiz/views.py da generate_quiz ni shu bilan almashtiring
+def generate_quiz(request, pk):
+    n = int(request.GET.get("count", 10))
+    quiz_type = get_object_or_404(QuizType, pk=pk)
+
+    # Faol savollar
+    question_ids = list(
+        Question.objects.filter(is_active=True, quiz_type_id=pk)
+        .values_list('id', flat=True)
+    )
+    if not question_ids:
+        messages.error(request, f"❌ '{quiz_type.name}' uchun faol savollar yo‘q.")
+        return redirect('quiztype_list')
+
+    n = min(n, len(question_ids))
+    selected_q_ids = random.sample(question_ids, n)
+
+    with transaction.atomic():
+        quiz = GenerateQuiz.objects.create(
+            user=request.user,
+            quiz_type=quiz_type
+        )
+
+        # MUHIM: SESSIYAGA TO‘G‘RI MA'LUMOTLAR
+        request.session['quiz_id'] = quiz.id
+        request.session['selected_q_ids'] = selected_q_ids
+        request.session['quiz_start_time'] = timezone.now().isoformat()  # TIMER UCHUN
+        request.session.modified = True  # Django sessiyani saqlasin
+
+        # Savollarni GenerateQuizQuestion ga yozamiz
+        for qid in selected_q_ids:
+            GenerateQuizQuestion.objects.create(
+                quiz=quiz,
+                question_id=qid
+            )
+
+    # TO‘G‘RI yo‘nalish: quiz_id bilan
+    return redirect('quiz_page', quiz_id=quiz.id, page=1)
+
+# 🔹 SAVOLLARNI KO‘RISH (har biri alohida sahifada)
+def quiz_page(request, quiz_id, page):
+    quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+    selected_q_ids = request.session.get('selected_q_ids', [])
+
+    # Filter active questions, preserving session order
+    questions = Question.objects.filter(id__in=selected_q_ids, is_active=True).prefetch_related(
+        Prefetch('answers', queryset=Answer.objects.filter(is_active=True))
+    )
+
+    if selected_q_ids:
+        preserved_order = Case(*[When(id=pk, then=pos) for pos, pk in enumerate(selected_q_ids)])
+        questions = questions.order_by(preserved_order)
+
+    paginator = Paginator(questions, 1)
+    page_obj = paginator.get_page(page)
+    question = page_obj.object_list[0] if page_obj else None
+
+    # JAVOB BERILGAN SAHIFA RAQAMLARINI hisoblaymiz
+    answered_question_ids = AnswerUsers.objects.filter(
+        user=request.user,
+        generate_quiz=quiz
+    ).values_list('question_id', flat=True)
+
+    # Har bir savolning tartib raqamini (1,2,3...) topamiz
+    answered_pages = []
+    for idx, q in enumerate(questions, 1):
+        if q.id in answered_question_ids:
+            answered_pages.append(idx)
+
+    context = {
+        'quiz_type': quiz.quiz_type,
+        'quiz': quiz,
+        'question': question,
+        'paginator': paginator,
+        'page_obj': page_obj,
+        'answered_questions': answered_pages,  # SAHIFA RAQAMLARI (1,2,3...)
+        'total_minutes': len(selected_q_ids),
+    }
+    return render(request, 'quiz/quiz_page.html', context)
+
+# 🔹 AJAX ORQALI JAVOBNI SAQLASH
+# quiz/views.py
+def save_answer(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            q_id = int(data.get('question_id'))
+            a_id = int(data.get('answer_id'))
+            quiz_id = request.session.get('quiz_id')
+
+            if not quiz_id:
+                return JsonResponse({"success": False, "error": "Sessiya yo'qolgan"}, status=400)
+
+            quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+            question = get_object_or_404(Question, id=q_id)
+            answer = get_object_or_404(Answer, id=a_id)
+
+            # Eski javobni o'chirish
+            AnswerUsers.objects.filter(
+                user=request.user,
+                generate_quiz=quiz,
+                question=question
+            ).delete()
+
+            # Yangi javob saqlash
+            AnswerUsers.objects.create(
+                user=request.user,
+                generate_quiz=quiz,
+                question=question,
+                answer=answer
+            )
+
+            # Javob berilgan savollar ro'yxatini yangilash
+            answered = AnswerUsers.objects.filter(
+                user=request.user,
+                generate_quiz=quiz
+            ).values_list('question_id', flat=True)
+
+            selected_q_ids = request.session.get('selected_q_ids', [])
+            answered = set(
+                AnswerUsers.objects.filter(user=request.user, generate_quiz=quiz).values_list('question_id', flat=True))
+            answered_pages = [idx for idx, qid in enumerate(selected_q_ids, 1) if qid in answered]
+            return JsonResponse({
+                "success": True,
+                "answered_questions": answered_pages
+            })
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+    return JsonResponse({"success": False}, status=400)
+
+
+# 🔹 TESTNI TUGATISH
+def finish_quiz(request):
+    quiz_id = request.session.get('quiz_id')
+    if not quiz_id:
+        return redirect('quiztype_list')
+
+    quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+    selected_q_ids = request.session.get('selected_q_ids', [])
+    total_questions = len(selected_q_ids)
+
+    answers = AnswerUsers.objects.filter(user=request.user, generate_quiz=quiz)
+    correct = sum(1 for ans in answers if ans.answer.is_correct)
+
+    quiz.score = int((correct / total_questions) * 100) if total_questions > 0 else 0
+    quiz.finished = timezone.now()
+    quiz.save()
+
+    # Sessiyani tozalaymiz
+    for key in ['quiz_id', 'selected_q_ids', 'quiz_start_time']:
+        request.session.pop(key, None)
+
+    return render(request, 'quiz/quiz_result.html', {
+        'quiz': quiz,
+        'total': total_questions,
+        'answered': answers.count(),
+        'correct': correct,
+        'percent': quiz.score,
+    })
+
+
+
+# 🔹 LOGIN sahifasi
+def user_login(request):
+    if request.user.is_authenticated:
+        return redirect('quiztype_list')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            messages.success(request, f"Xush kelibsiz, {user.username}!")
+            return redirect('quiztype_list')
+        else:
+            messages.error(request, "Login yoki parol noto‘g‘ri!")
+
+    return render(request, 'quiz/login.html')
+
+
+# 🔹 LOGOUT
+def user_logout(request):
+    logout(request)
+    messages.info(request, "Tizimdan chiqdingiz.")
+    return redirect('login')
+
+
+# 🔹 SIGNUP (ro‘yxatdan o‘tish)
+def user_signup(request):
+    if request.user.is_authenticated:
+        return redirect('quiztype_list')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        first_name = request.POST.get('firstname')
+        last_name = request.POST.get('lastname')
+        email = request.POST.get('email')
+        password1 = request.POST.get('password1')
+        password2 = request.POST.get('password2')
+
+        if password1 != password2:
+            messages.error(request, "Parollar bir xil emas!")
+            return redirect('signup')
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Bu foydalanuvchi nomi allaqachon mavjud.")
+            return redirect('signup')
+
+        user = User.objects.create_user(username=username, first_name=first_name, last_name=last_name, email=email, password=password1)
+        login(request, user)
+        messages.success(request, "Muvaffaqiyatli ro‘yxatdan o‘tdingiz!")
+        return redirect('quiztype_list')
+
+    return render(request, 'quiz/signup.html')

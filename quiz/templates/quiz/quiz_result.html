@@ -1,0 +1,13 @@
+{% extends 'quiz/base.html' %}
+{% block content %}
+<div class="container text-center mt-5">
+  <h2 class="text-success mb-4">✅ Test yakunlandi!</h2>
+  <div class="card shadow-lg p-4 mx-auto" style="max-width: 400px;">
+    <h4>{{ quiz.quiz_type.name }}</h4>
+    <p><b>Umumiy savollar:</b> {{ total }}</p>
+    <p><b>To‘g‘ri javoblar:</b> {{ correct }}</p>
+    <h3 class="text-primary mt-3">Natija: {{ percent }}%</h3>
+    <a href="{% url 'quiztype_list' %}" class="btn btn-success mt-3">Bosh sahifaga qaytish</a>
+  </div>
+</div>
+{% endblock %}
