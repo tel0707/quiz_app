@@ -1,7 +1,6 @@
 from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
-from django.shortcuts import render
 
 
 # --- 1️⃣ Test turlari ---
@@ -96,4 +95,3 @@ class AnswerUsers(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → {self.generate_quiz.numbers}"
-

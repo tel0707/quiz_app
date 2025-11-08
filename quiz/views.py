@@ -571,26 +571,3 @@ def user_signup(request):
         return redirect('quiztype_list')
 
     return render(request, 'quiz/signup.html')
-
-def result_users(request, test):
-    user = request.user
-
-    # Foydalanuvchi javoblarini savollar bilan birgalikda olish
-    my_tests = (
-        AnswerUsers.objects
-        .filter(user=user, generate_quiz=test)
-        .select_related('question', 'answer')
-        .order_by('-id')
-    )
-
-    # Yuqorida select_related ishlatilgani uchun bu joyda alohida so‘rov kerak emas
-    question_ids = my_tests.values_list('question_id', flat=True)
-    answer = Answer.objects.filter(question_id__in=question_ids)
-
-    context = {
-        'user': user,
-        'my_tests': my_tests,
-        'answer': answer,
-    }
-    return render(request, 'quiz/result_users.html', context)
-
