@@ -34,8 +34,7 @@
             background: #dfe7ff;
         }
 
-        .answers input[type="radio"]:checked + label,
-        .answers input[type="checkbox"]:checked + label {
+        .answers input[type="radio"]:checked + label {
             background: #d0f5d0;
             border: 1px solid #28a745;
         }
@@ -62,7 +61,7 @@
 </head>
 <body>
 
-<!-- NAVBAR (timer bilan) -->
+<!-- 🔹 NAVBAR (timer bilan) -->
 <nav class="navbar navbar-dark bg-primary fixed-top">
     <div class="container-fluid justify-content-between">
         <span class="navbar-brand">{{ quiz_type.name }}</span>
@@ -73,45 +72,26 @@
 
 <div style="margin-top: 80px;"></div>
 
-<!-- Savol kartasi -->
+<!-- 🔹 Savol kartasi -->
 <div class="question-card">
     <h5><b>{{ page_obj.number }}.</b> {{ question.name }}</h5>
-    <form id="quizForm">
+    <form method="post" id="quizForm">
         {% csrf_token %}
         <div class="answers mt-3">
             {% for ans in question.answers.all %}
-                {% if question.is_multiple_choice %}
-                    <!-- Ko'p tanlovli savol → checkbox -->
-                    <input type="checkbox"
-                           class="btn-check"
-                           name="answer_{{ question.id }}"
-                           id="ans_{{ ans.id }}"
-                           value="{{ ans.id }}"
-                           {% if ans.id in user_answers %}checked{% endif %}>
-                {% else %}
-                    <!-- Bitta tanlovli savol → radio -->
-                    <input type="radio"
-                           class="btn-check"
-                           name="answer_{{ question.id }}"
-                           id="ans_{{ ans.id }}"
-                           value="{{ ans.id }}"
-                           {% if ans.id in user_answers %}checked{% endif %}>
-                {% endif %}
 
-                <label class="btn btn-outline-secondary w-100 text-start"
-                       for="ans_{{ ans.id }}">
+                <input type="radio" class="btn-check" name="answer_{{ question.id }}" id="ans_{{ ans.id }}"
+
+                       value="{{ ans.id }}" {% if ans.id in user_answers %}checked{% endif %}>
+                <label class="btn btn-outline-secondary w-100 text-start" for="ans_{{ ans.id }}">
                     {{ ans.name }}
                 </label>
             {% endfor %}
         </div>
     </form>
-
-    {% if question.is_multiple_choice %}
-        <small class="text-muted">Bir nechta javob tanlashingiz mumkin.</small>
-    {% endif %}
 </div>
 
-<!-- Pagination -->
+<!-- Pastdagi sahifalar navigatsiyasi -->
 <nav aria-label="Savollar navigatsiyasi" class="mt-4">
     <ul class="pagination justify-content-center flex-wrap" id="pagination">
         {% for num in paginator.page_range %}
@@ -121,24 +101,20 @@
         {% endfor %}
     </ul>
 </nav>
-
 <script>
-    // Javob berilgan sahifalar
+    // Sahifa raqamlari bo‘yicha yashil qilish
     let answeredQuestions = {{ answered_questions|safe }};
 
-    // Pagination ranglarini yangilash
     function updatePaginationColors() {
         document.querySelectorAll('#pagination .page-item').forEach(item => {
             const link = item.querySelector('.page-link');
             if (!link) return;
             const pageNum = parseInt(link.textContent);
 
-            // Javob berilgan sahifalar → yashil
             if (answeredQuestions.includes(pageNum)) {
                 item.classList.add('answered');
                 link.className = 'page-link bg-success text-white border-success';
             }
-            // Hozirgi sahifa → active
             if ({{ page_obj.number }} === pageNum) {
                 item.classList.add('active');
             }
@@ -169,30 +145,9 @@
     const timerInterval = setInterval(updateTimer, 1000);
     updateTimer();
 
-    // Javob saqlash (radio yoki checkbox)
-    document.querySelectorAll("input[type='radio'], input[type='checkbox']").forEach(el => {
+    // Javob saqlash
+    document.querySelectorAll("input[type='radio']").forEach(el => {
         el.addEventListener("change", function () {
-            const questionId = this.name.replace("answer_", "");
-            const isMultiple = {{ question.is_multiple_choice|lower }};
-
-            let selectedAnswers = [];
-            if (isMultiple) {
-                // Barcha checkbox'larni tekshirish
-                document.querySelectorAll(`input[name="answer_${questionId}"]:checked`).forEach(cb => {
-                    selectedAnswers.push(cb.value);
-                });
-            } else {
-                // Radio → faqat bitta
-                if (this.checked) {
-                    selectedAnswers = [this.value];
-                }
-            }
-
-            // Hech qanday javob tanlanmagan bo'lsa → bo'sh yuborish
-            if (selectedAnswers.length === 0) {
-                selectedAnswers = [];
-            }
-
             fetch("{% url 'save_answer' %}", {
                 method: "POST",
                 headers: {
@@ -200,32 +155,34 @@
                     "X-CSRFToken": "{{ csrf_token }}",
                 },
                 body: JSON.stringify({
-                    question_id: questionId,
-                    answer_ids: selectedAnswers  // Ro'yxat sifatida yuboriladi
+                    question_id: this.name.replace("answer_", ""),
+                    answer_id: this.value
                 })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    answeredQuestions = data.answered_questions;
-                    updatePaginationColors();
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        answeredQuestions = data.answered_questions;
+                        updatePaginationColors();
 
-                    // Avtomatik o'tishni xohlasangiz quyidagilarni yoqing:
-                    /*
-                    const currentPage = {{ page_obj.number }};
-                    const totalPages = {{ paginator.num_pages }};
-                    if (currentPage < totalPages) {
-                        setTimeout(() => {
-                            location.href = "{% url 'quiz_page' quiz_id=quiz.id page=1 %}".replace('/1/', '/' + (currentPage + 1) + '/');
-                        }, 300);
+                        // ✅ TO'G'RI YONDASHUV: Avtomatik o'tishni o'chirish
+                        // Foydalanuvchi qo'lda sahifalarni almashtirsin
+
+                        // Yoki agar avtomatik o'tish kerak bo'lsa:
+                        const currentPage = {{ page_obj.number }};
+                        const totalPages = {{ paginator.num_pages }};
+
+                        if (currentPage < totalPages) {
+                            // Keyingi sahifaga o'tish
+                            setTimeout(() => {
+                                location.href = "{% url 'quiz_page' quiz_id=quiz.id page=1 %}".replace('/1/', '/' + (currentPage + 1) + '/');
+                            }, 300);
+                        } else {
+                            // Oxirgi sahifada - testni tugatish
+                            setTimeout(() => location.href = "{% url 'finish_quiz' %}", 500);
+                        }
                     }
-                    */
-                }
-            })
-            .catch(err => console.error("Xato:", err));
+                });
         });
     });
 </script>
-
-</body>
-</html>
