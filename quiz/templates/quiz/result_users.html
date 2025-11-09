@@ -1,0 +1,39 @@
+{% extends 'quiz/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">🧾 Javoblaringiz</h2>
+
+    {% for test in my_tests %}
+        <div class="card shadow-sm mb-4 border-0">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><b>{{ forloop.counter }}.</b> {{ test.question }}</span>
+                <span class="badge bg-light text-primary">{{ test.quiz_type }}</span>
+            </div>
+            <div class="card-body">
+                {% for ans in answer %}
+                    {% if test.question == ans.question %}
+                        {% if ans.is_correct %}
+                            <p class="mb-2">
+                                ✅ <b class="text-success">{{ ans.name }}</b>
+                                <span class="badge bg-success ms-2">To‘g‘ri javob</span>
+                            </p>
+                        {% elif test.answer == ans %}
+                            <p class="mb-2">
+                                ❌ <b class="text-danger">{{ ans.name }}</b>
+                                <span class="badge bg-danger ms-2">Siz tanlagan</span>
+                            </p>
+                        {% else %}
+                            <p class="mb-2 text-muted">{{ ans.name }}</p>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    {% empty %}
+        <div class="alert alert-info text-center">
+            Sizda hozircha hech qanday test natijalari yo‘q.
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

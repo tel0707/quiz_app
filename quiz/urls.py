@@ -17,9 +17,11 @@ urlpatterns = [
     path('quiz/<int:quiz_id>/page/<int:page>/', views.quiz_page, name='quiz_page'),
     path('quiz/save-answer/', views.save_answer, name='save_answer'),
     path('quiz/finish/', views.finish_quiz, name='finish_quiz'),
+    path('result_users/<str:test>/', views.result_users, name='result_users'),
 # Auth
     path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='logout'),
     path('signup/', views.user_signup, name='signup'),
+
 
 ]

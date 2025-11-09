@@ -28,7 +28,7 @@
         </tr>
         <tr>
             {% for test in my_test %}
-                <td>{{ test }}</td>
+                <td> <a href="{% url 'result_users' test.pk %}"> {{ test }} </a></td>
                 <td>{{ test.score }}</td>
                 <td>{{ test.quiz_type }}</td>
                 <td>{{ test.created |date:"d.m.Y H:i" }}</td>
