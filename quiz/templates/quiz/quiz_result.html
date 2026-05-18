@@ -1,13 +1,86 @@
 {% extends 'quiz/base.html' %}
+{% block title %}Test natijasi{% endblock %}
 {% block content %}
-<div class="container text-center mt-5">
-  <h2 class="text-success mb-4">✅ Test yakunlandi!</h2>
-  <div class="card shadow-lg p-4 mx-auto" style="max-width: 400px;">
-    <h4>{{ quiz.quiz_type.name }}</h4>
-    <p><b>Umumiy savollar:</b> {{ total }}</p>
-    <p><b>To‘g‘ri javoblar:</b> {{ correct }}</p>
-    <h3 class="text-primary mt-3">Natija: {{ percent }}%</h3>
-    <a href="{% url 'quiztype_list' %}" class="btn btn-success mt-3">Bosh sahifaga qaytish</a>
-  </div>
+<div class="row justify-content-center mt-3">
+    <div class="col-md-6 col-lg-5">
+        <div class="card p-4 text-center">
+
+            <!-- Score circle -->
+            <div class="mb-3">
+                {% if percent >= 86 %}
+                    <div class="display-1 fw-bold text-success">{{ percent }}%</div>
+                    <p class="text-success fw-semibold fs-5 mb-0">
+                        <i class="bi bi-trophy-fill me-1"></i>A'lo natija!
+                    </p>
+                {% elif percent >= 71 %}
+                    <div class="display-1 fw-bold text-primary">{{ percent }}%</div>
+                    <p class="text-primary fw-semibold fs-5 mb-0">
+                        <i class="bi bi-star-fill me-1"></i>Yaxshi natija
+                    </p>
+                {% elif percent >= 56 %}
+                    <div class="display-1 fw-bold text-warning">{{ percent }}%</div>
+                    <p class="text-warning fw-semibold fs-5 mb-0">
+                        <i class="bi bi-emoji-neutral-fill me-1"></i>Qoniqarli
+                    </p>
+                {% else %}
+                    <div class="display-1 fw-bold text-danger">{{ percent }}%</div>
+                    <p class="text-danger fw-semibold fs-5 mb-0">
+                        <i class="bi bi-emoji-frown-fill me-1"></i>Yaxshilash kerak
+                    </p>
+                {% endif %}
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress mb-4" style="height: 10px; border-radius: 8px;">
+                <div class="progress-bar
+                    {% if percent >= 86 %}bg-success
+                    {% elif percent >= 71 %}bg-primary
+                    {% elif percent >= 56 %}bg-warning
+                    {% else %}bg-danger{% endif %}"
+                    style="width: {{ percent }}%; border-radius: 8px;">
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-4">
+                    <div class="bg-light rounded-3 p-3">
+                        <div class="fs-4 fw-bold text-dark">{{ total }}</div>
+                        <div class="small text-muted">Jami savol</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="bg-success bg-opacity-10 rounded-3 p-3">
+                        <div class="fs-4 fw-bold text-success">{{ correct }}</div>
+                        <div class="small text-muted">To'g'ri</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="bg-danger bg-opacity-10 rounded-3 p-3">
+                        <div class="fs-4 fw-bold text-danger">{{ total|add:"-"|add:correct }}</div>
+                        <div class="small text-muted">Noto'g'ri</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="text-start mb-4 border rounded-3 p-3 bg-light">
+                <div class="small text-muted mb-1">Test nomi</div>
+                <div class="fw-semibold">{{ quiz.quiz_type.name }}</div>
+                <div class="small text-muted mt-2 mb-1">Test raqami</div>
+                <div class="fw-semibold text-primary">{{ quiz.numbers }}</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-grid gap-2">
+                <a href="{% url 'result_users' quiz.pk %}" class="btn btn-primary">
+                    <i class="bi bi-list-check me-2"></i>Javoblarni ko'rish
+                </a>
+                <a href="{% url 'quiztype_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-house me-2"></i>Bosh sahifaga qaytish
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

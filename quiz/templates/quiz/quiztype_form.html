@@ -1,21 +1,36 @@
 {% extends 'quiz/base.html' %}
+{% block title %}{% if form.instance.pk %}Test turini tahrirlash{% else %}Yangi test turi{% endif %}{% endblock %}
 {% block content %}
-<h2>{% if form.instance.pk %}Tahrirlash{% else %}Yangi Quiz Turi{% endif %}</h2>
-
-<form method="post">
-    {% csrf_token %}
-    <div class="mb-3">
-        {{ form.name.label_tag }}
-        {{ form.name }}
-        {% if form.name.errors %}
-            <div class="text-danger">{{ form.name.errors }}</div>
-        {% endif %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card p-4">
+            <h5 class="fw-bold mb-4">
+                <i class="bi bi-{% if form.instance.pk %}pencil{% else %}plus-circle{% endif %} me-2 text-primary"></i>
+                {% if form.instance.pk %}Test turini tahrirlash{% else %}Yangi test turi{% endif %}
+            </h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    {{ form.name.label_tag }}
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="text-danger small mt-1">{{ form.name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="form-check mb-4">
+                    {{ form.is_active }}
+                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Faol</label>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-check-lg me-1"></i>Saqlash
+                    </button>
+                    <a href="{% url 'quiztype_list' %}" class="btn btn-outline-secondary flex-fill">
+                        <i class="bi bi-x-lg me-1"></i>Bekor qilish
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
-    <div class="form-check mb-3">
-        {{ form.is_active }}
-        {{ form.is_active.label_tag }}
-    </div>
-    <button type="submit" class="btn btn-primary">Saqlash</button>
-    <a href="{% url 'quiztype_list' %}" class="btn btn-secondary">Bekor qilish</a>
-</form>
+</div>
 {% endblock %}

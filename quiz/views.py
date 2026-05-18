@@ -1,6 +1,7 @@
 # quiz/views.py
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch, Case, When
 from .forms import QuizTypeForm, QuestionForm, AnswerFormSet, AnswerUpdateFormSet, UploadWordForm
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView
@@ -19,8 +20,17 @@ from django.utils import timezone
 from .models import QuizType, Question, Answer, GenerateQuiz, AnswerUsers, GenerateQuizQuestion
 
 
+# --- Superuser tekshiruvi ---
+class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_superuser
 
-# --- Ro‘yxat (hamma ko‘ra oladi) ---
+    def handle_no_permission(self):
+        messages.error(self.request, "Bu amalni faqat administrator bajarishi mumkin.")
+        return redirect('quiztype_list')
+
+
+# --- Ro'yxat (hamma ko'ra oladi) ---
 class QuizTypeListView(ListView):
     model = QuizType
     template_name = 'quiz/quiztype_list.html'
@@ -31,23 +41,13 @@ class QuizTypeListView(ListView):
         return QuizType.objects.filter(is_active=True).order_by('-id')
 
 
-# --- Superuser tekshiruvi ---
-class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.is_superuser
-
-    def handle_no_permission(self):
-        messages.error(self.request, "Bu amalni faqat administrator bajarishi mumkin.")
-        return super().handle_no_permission()
-
-
 # --- Yaratish (faqat superuser) ---
 class QuizTypeCreateView(SuperuserRequiredMixin, SuccessMessageMixin, CreateView):
     model = QuizType
     form_class = QuizTypeForm
     template_name = 'quiz/quiztype_form.html'
     success_url = reverse_lazy('quiztype_list')
-    success_message = "Quiz turi muvaffaqiyatli qo‘shildi!"
+    success_message = "Quiz turi muvaffaqiyatli qo'shildi!"
 
 
 # --- Tahrirlash (faqat superuser) ---
@@ -59,55 +59,16 @@ class QuizTypeUpdateView(SuperuserRequiredMixin, SuccessMessageMixin, UpdateView
     success_message = "Quiz turi muvaffaqiyatli yangilandi!"
 
 
-
-    def form_valid(self, form):
-        context = self.get_context_data()
-        formset = context['formset']
-
-        if not formset.is_valid():
-            return self.form_invalid(form)
-
-        # Yangi va o'chirilmagan to'g'ri javoblarni hisoblaymiz
-        correct_answers = [
-            f for f in formset.forms
-            if f.cleaned_data and not f.cleaned_data.get('DELETE', False) and f.cleaned_data.get('is_correct')
-        ]
-
-        if len(correct_answers) == 0:
-            messages.error(self.request, "Kamida bitta to'g'ri javob bo'lishi kerak!")
-            return self.form_invalid(form)
-
-        with transaction.atomic():
-            self.object = form.save()
-            formset.instance = self.object
-            formset.save()
-
-            quiz_type_id = form.cleaned_data['quiz_type'].id
-            self.request.session['last_quiztype_id'] = quiz_type_id
-
-        return super().form_valid(form)
-
-
-# --- O‘chirish (faqat superuser) ---
+# --- O'chirish (faqat superuser) ---
 class QuizTypeDeleteView(SuperuserRequiredMixin, SuccessMessageMixin, DeleteView):
     model = QuizType
     template_name = 'quiz/quiztype_confirm_delete.html'
     success_url = reverse_lazy('quiztype_list')
-    success_message = "Quiz turi muvaffaqiyatli o‘chirildi!"
+    success_message = "Quiz turi muvaffaqiyatli o'chirildi!"
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, self.success_message)
         return super().delete(request, *args, **kwargs)
-
-
-# Superuser tekshiruvi
-class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.is_superuser
-
-    def handle_no_permission(self):
-        messages.error(self.request, "Bu amalni faqat administrator bajarishi mumkin.")
-        return redirect('question_list')
 
 
 # --- Savollar ro'yxati ---
@@ -153,7 +114,6 @@ class QuestionCreateView(SuperuserRequiredMixin, SuccessMessageMixin, CreateView
             self.object = form.save()
             formset.instance = self.object
             formset.save()
-            # Oxirgi tanlangan quiz_type ni saqlash
             quiz_type_id = form.cleaned_data['quiz_type'].id
             self.request.session['last_quiztype_id'] = quiz_type_id
             return super().form_valid(form)
@@ -184,7 +144,6 @@ class QuestionUpdateView(SuperuserRequiredMixin, SuccessMessageMixin, UpdateView
             self.object = form.save()
             formset.instance = self.object
             formset.save()
-            # Yangi tanlangan quiz_type ni saqlash
             quiz_type_id = form.cleaned_data['quiz_type'].id
             self.request.session['last_quiztype_id'] = quiz_type_id
             return super().form_valid(form)
@@ -197,22 +156,19 @@ class QuestionDeleteView(SuperuserRequiredMixin, SuccessMessageMixin, DeleteView
     model = Question
     template_name = 'quiz/question_confirm_delete.html'
     success_url = reverse_lazy('question_list')
-    success_message = "Savol muvaffaqiyatli o‘chirildi!"
+    success_message = "Savol muvaffaqiyatli o'chirildi!"
 
     def form_valid(self, form):
-        # SuccessMessageMixin avtomatik ishlaydi, lekin agar qo'shimcha logika kerak bo'lsa:
         messages.success(self.request, self.success_message)
         return super().form_valid(form)
 
 
+@login_required
 def upload_quiz_from_word(request):
-    """
-    Word fayldan savollarni import qiluvchi view.
-    - Hujjat ichidagi PARAGRAFLAR va TABLE CELL-larni ketma-ket o'qiydi.
-    - '1. ' kabi raqam+nuqta bilan boshlangan qatorlarni yangi savol deb oladi.
-    - Raqamli qator va keyingi kelgan barcha qatorlar o'rtasidagi satrlar javob variantlari hisoblanadi.
-    - Javob satri boshida '*' bo'lsa -> is_correct = True.
-    """
+    if not request.user.is_superuser:
+        messages.error(request, "Bu amalni faqat administrator bajarishi mumkin.")
+        return redirect('quiztype_list')
+
     if request.method == "POST":
         form = UploadWordForm(request.POST, request.FILES)
         if form.is_valid():
@@ -222,67 +178,48 @@ def upload_quiz_from_word(request):
             try:
                 doc = Document(file)
             except Exception as e:
-                messages.error(request, f"❌ Word faylni o‘qib bo‘lmadi: {e}")
+                messages.error(request, f"❌ Word faylni o'qib bo'lmadi: {e}")
                 return redirect("upload_quiz_from_word")
 
-            # --- 1) Hujjatdan barcha matn qatorlarini yig'ish ---
             lines = []
-
-            # Paragraflar (agar oddiy matn ham bo'lsa)
             for p in doc.paragraphs:
                 t = p.text.strip()
                 if t:
-                    # no-break space to'g'irlash
                     lines.append(t.replace("\xa0", " "))
 
-            # Jadval ichidagi har bir cellni ham ketma-ket qo'shamiz
             for table in doc.tables:
                 for row in table.rows:
-                    # Agar jadvalda bir nechta cell bo'lsa, ularni birlashtiramiz (odatiy holat: 1 cell/row)
-                    # Ammo bu yerda har bir cell alohida satr bo'lib keladi: shuning uchun hamma celllarni alohida qo'shamiz
                     for cell in row.cells:
                         cell_text = cell.text.strip()
                         if cell_text:
                             lines.append(cell_text.replace("\xa0", " "))
 
             if not lines:
-                messages.error(request, "❌ Fayldan hech qanday matn o‘qilmadi.")
+                messages.error(request, "❌ Fayldan hech qanday matn o'qilmadi.")
                 return redirect("upload_quiz_from_word")
 
-            # --- 2) Lines ni tahlil qilib savol-javob bloklariga ajratish ---
-            question_blocks = []  # har element: (q_line, [answer_lines...])
+            question_blocks = []
             current_q = None
             current_answers = []
-
-            # regex: boshida raqam + nuqta (masalan "1. " yoki "12. ")
             q_pattern = re.compile(r'^\s*(\d+)\.\s*(.*)')
 
             for line in lines:
-                # Tozalash
                 line = line.strip()
                 if not line:
                     continue
-
                 m = q_pattern.match(line)
                 if m:
-                    # yangi savol topildi
-                    # avvalgi savolni saqlaymiz (agar mavjud)
                     if current_q is not None:
                         question_blocks.append((current_q, current_answers))
-                    # boshlagich: raqam va qolgan matn (savol matni)
                     num = m.group(1)
                     rest = m.group(2).strip()
-                    # Agar savol matn bo'sh bo'lsa, butun line ni savol sifatida olamiz
                     if not rest:
                         rest = line
                     current_q = f"{num}. {rest}"
                     current_answers = []
                 else:
-                    # Bu qatorda javob variantlari yoki savolga tegishli davomiy qatorlar bor
-                    # Agar qatorda bir nechta javoblar bo'lib ketgan bo'lsa (kam ehtimol), biz har bir qatorni alohida javob sifatida qabul qilamiz.
                     current_answers.append(line)
 
-            # Oxirgi savolni ham qo'shamiz
             if current_q is not None:
                 question_blocks.append((current_q, current_answers))
 
@@ -290,53 +227,48 @@ def upload_quiz_from_word(request):
                 messages.error(request, "❌ Faylda savollar topilmadi. Iltimos formatni tekshiring (1. Savol ...).")
                 return redirect("upload_quiz_from_word")
 
-            # --- 3) Har bir blokni DB ga yozish ---
-            created_q = 0
             problems = []
+            valid_blocks = []
             for q_text, answers in question_blocks:
-                # Ba'zi bloklar savol bilan javobsiz kelishi mumkin -> e'tibor
                 if not answers:
                     problems.append(f"'{q_text}' uchun javob topilmadi")
-                    continue
+                else:
+                    valid_blocks.append((q_text, answers))
 
-                # Savolni saqlaymiz
-                question = Question.objects.create(
-                    quiz_type=quiz_type,
-                    name=q_text,
-                )
+            with transaction.atomic():
+                created_questions = Question.objects.bulk_create([
+                    Question(quiz_type=quiz_type, name=q_text)
+                    for q_text, _ in valid_blocks
+                ])
 
-                # Har bir javob qatorini Answer qilib yozamiz.
-                for ans_line in answers:
-                    # to'g'ri javob belgisi: boshida '*' bo'lsa yoki ans_line ichida '*'
-                    is_correct = False
-                    text = ans_line
-                    # ba'zan '*' belgisi qatorda boshlang‘ichda, ba'zan oxirida — oddiy holatda boshlanishi
-                    if text.startswith("*"):
-                        is_correct = True
-                        text = text[1:].strip()
-                    else:
-                        # agar '*' boshqa joyda bo'lsa (kam uchraydi), olib tashlab flag qo'yamiz
-                        if "*" in text:
+                answers_to_create = []
+                questions_to_update = []
+                for question, (_, answers) in zip(created_questions, valid_blocks):
+                    correct_count = 0
+                    for ans_line in answers:
+                        is_correct = False
+                        text = ans_line
+                        if text.startswith("*"):
+                            is_correct = True
+                            text = text[1:].strip()
+                        elif "*" in text:
                             is_correct = True
                             text = text.replace("*", "").strip()
+                        text = text.strip()
+                        if not text:
+                            continue
+                        answers_to_create.append(Answer(question=question, name=text, is_correct=is_correct))
+                        if is_correct:
+                            correct_count += 1
+                    if correct_count > 1:
+                        question.is_multiple_choice = True
+                        questions_to_update.append(question)
 
-                    # Oxirgi tozalash
-                    text = text.strip()
+                Answer.objects.bulk_create(answers_to_create)
+                if questions_to_update:
+                    Question.objects.bulk_update(questions_to_update, ['is_multiple_choice'])
 
-                    # Agar javob bo'sh bo'lsa — o'tkazamiz
-                    if not text:
-                        continue
-
-                    Answer.objects.create(
-                        question=question,
-                        name=text,
-                        is_correct=is_correct
-                    )
-
-                created_q += 1
-
-            # --- 4) Xabar berish ---
-            msg = f"✅ {created_q} ta savol '{quiz_type.name}' turiga muvaffaqiyatli yuklandi."
+            msg = f"✅ {len(created_questions)} ta savol '{quiz_type.name}' turiga muvaffaqiyatli yuklandi."
             if problems:
                 msg += " Ba'zi bloklarda muammo: " + "; ".join(problems[:5])
             messages.success(request, msg)
@@ -345,27 +277,25 @@ def upload_quiz_from_word(request):
         else:
             messages.error(request, "❌ Forma to'ldirishda xatolik bor.")
             return redirect("upload_quiz_from_word")
+
     else:
         form = UploadWordForm()
 
     return render(request, "quiz/upload_quiz.html", {"form": form})
 
 
-
-
 # 🔹 TESTNI BOSHLASH
-# quiz/views.py da generate_quiz ni shu bilan almashtiring
+@login_required
 def generate_quiz(request, pk):
     n = int(request.GET.get("count", 10))
     quiz_type = get_object_or_404(QuizType, pk=pk)
 
-    # Faol savollar
     question_ids = list(
         Question.objects.filter(is_active=True, quiz_type_id=pk)
         .values_list('id', flat=True)
     )
     if not question_ids:
-        messages.error(request, f"❌ '{quiz_type.name}' uchun faol savollar yo‘q.")
+        messages.error(request, f"❌ '{quiz_type.name}' uchun faol savollar yo'q.")
         return redirect('quiztype_list')
 
     n = min(n, len(question_ids))
@@ -377,28 +307,26 @@ def generate_quiz(request, pk):
             quiz_type=quiz_type
         )
 
-        # MUHIM: SESSIYAGA TO‘G‘RI MA'LUMOTLAR
         request.session['quiz_id'] = quiz.id
         request.session['selected_q_ids'] = selected_q_ids
-        request.session['quiz_start_time'] = timezone.now().isoformat()  # TIMER UCHUN
-        request.session.modified = True  # Django sessiyani saqlasin
+        request.session['quiz_start_time'] = timezone.now().isoformat()
+        request.session['answer_orders'] = {}
+        request.session.modified = True
 
-        # Savollarni GenerateQuizQuestion ga yozamiz
-        for qid in selected_q_ids:
-            GenerateQuizQuestion.objects.create(
-                quiz=quiz,
-                question_id=qid
-            )
+        GenerateQuizQuestion.objects.bulk_create([
+            GenerateQuizQuestion(quiz=quiz, question_id=qid)
+            for qid in selected_q_ids
+        ])
 
-    # TO‘G‘RI yo‘nalish: quiz_id bilan
     return redirect('quiz_page', quiz_id=quiz.id, page=1)
 
-# 🔹 SAVOLLARNI KO‘RISH (har biri alohida sahifada)
+
+# 🔹 SAVOLLARNI KO'RISH (har biri alohida sahifada)
+@login_required
 def quiz_page(request, quiz_id, page):
     quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
     selected_q_ids = request.session.get('selected_q_ids', [])
 
-    # Filter active questions, preserving session order
     questions = Question.objects.filter(id__in=selected_q_ids, is_active=True).prefetch_related(
         Prefetch('answers', queryset=Answer.objects.filter(is_active=True))
     )
@@ -411,17 +339,40 @@ def quiz_page(request, quiz_id, page):
     page_obj = paginator.get_page(page)
     question = page_obj.object_list[0] if page_obj else None
 
-    # JAVOB BERILGAN SAHIFA RAQAMLARINI hisoblaymiz
-    answered_question_ids = AnswerUsers.objects.filter(
+    answered_question_ids = set(AnswerUsers.objects.filter(
         user=request.user,
         generate_quiz=quiz
-    ).values_list('question_id', flat=True)
+    ).values_list('question_id', flat=True))
 
-    # Har bir savolning tartib raqamini (1,2,3...) topamiz
-    answered_pages = []
-    for idx, q in enumerate(questions, 1):
-        if q.id in answered_question_ids:
-            answered_pages.append(idx)
+    answered_pages = [idx for idx, q in enumerate(questions, 1) if q.id in answered_question_ids]
+
+    # Javoblar tartibini sessiyada saqlash (har savol uchun bir marta aralashtiriladi)
+    answer_orders = request.session.get('answer_orders', {})
+    shuffled_answers = []
+    selected_answer_id = None
+
+    if question:
+        q_key = str(question.id)
+        all_answers = list(question.answers.all())
+
+        if q_key not in answer_orders:
+            random.shuffle(all_answers)
+            answer_orders[q_key] = [a.id for a in all_answers]
+            request.session['answer_orders'] = answer_orders
+            request.session.modified = True
+        else:
+            order = answer_orders[q_key]
+            answers_dict = {a.id: a for a in all_answers}
+            all_answers = [answers_dict[aid] for aid in order if aid in answers_dict]
+
+        shuffled_answers = all_answers
+
+        user_answer = AnswerUsers.objects.filter(
+            user=request.user,
+            generate_quiz=quiz,
+            question=question
+        ).first()
+        selected_answer_id = user_answer.answer_id if user_answer else None
 
     context = {
         'quiz_type': quiz.quiz_type,
@@ -429,13 +380,16 @@ def quiz_page(request, quiz_id, page):
         'question': question,
         'paginator': paginator,
         'page_obj': page_obj,
-        'answered_questions': answered_pages,  # SAHIFA RAQAMLARI (1,2,3...)
+        'answered_questions': answered_pages,
         'total_minutes': len(selected_q_ids),
+        'shuffled_answers': shuffled_answers,
+        'selected_answer_id': selected_answer_id,
     }
     return render(request, 'quiz/quiz_page.html', context)
 
+
 # 🔹 AJAX ORQALI JAVOBNI SAQLASH
-# quiz/views.py
+@login_required
 def save_answer(request):
     if request.method == "POST":
         try:
@@ -449,16 +403,17 @@ def save_answer(request):
 
             quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
             question = get_object_or_404(Question, id=q_id)
-            answer = get_object_or_404(Answer, id=a_id)
+            answer = get_object_or_404(Answer, id=a_id, question=question)
 
-            # Eski javobni o'chirish
+            if not GenerateQuizQuestion.objects.filter(quiz=quiz, question=question).exists():
+                return JsonResponse({"success": False, "error": "Savol bu testga tegishli emas"}, status=400)
+
             AnswerUsers.objects.filter(
                 user=request.user,
                 generate_quiz=quiz,
                 question=question
             ).delete()
 
-            # Yangi javob saqlash
             AnswerUsers.objects.create(
                 user=request.user,
                 generate_quiz=quiz,
@@ -466,15 +421,10 @@ def save_answer(request):
                 answer=answer
             )
 
-            # Javob berilgan savollar ro'yxatini yangilash
-            answered = AnswerUsers.objects.filter(
-                user=request.user,
-                generate_quiz=quiz
-            ).values_list('question_id', flat=True)
-
             selected_q_ids = request.session.get('selected_q_ids', [])
             answered = set(
-                AnswerUsers.objects.filter(user=request.user, generate_quiz=quiz).values_list('question_id', flat=True))
+                AnswerUsers.objects.filter(user=request.user, generate_quiz=quiz).values_list('question_id', flat=True)
+            )
             answered_pages = [idx for idx, qid in enumerate(selected_q_ids, 1) if qid in answered]
             return JsonResponse({
                 "success": True,
@@ -488,6 +438,7 @@ def save_answer(request):
 
 
 # 🔹 TESTNI TUGATISH
+@login_required
 def finish_quiz(request):
     quiz_id = request.session.get('quiz_id')
     if not quiz_id:
@@ -497,15 +448,14 @@ def finish_quiz(request):
     selected_q_ids = request.session.get('selected_q_ids', [])
     total_questions = len(selected_q_ids)
 
-    answers = AnswerUsers.objects.filter(user=request.user, generate_quiz=quiz)
+    answers = AnswerUsers.objects.filter(user=request.user, generate_quiz=quiz).select_related('answer')
     correct = sum(1 for ans in answers if ans.answer.is_correct)
 
     quiz.score = int((correct / total_questions) * 100) if total_questions > 0 else 0
     quiz.finished = timezone.now()
     quiz.save()
 
-    # Sessiyani tozalaymiz
-    for key in ['quiz_id', 'selected_q_ids', 'quiz_start_time']:
+    for key in ['quiz_id', 'selected_q_ids', 'quiz_start_time', 'answer_orders']:
         request.session.pop(key, None)
 
     return render(request, 'quiz/quiz_result.html', {
@@ -517,7 +467,6 @@ def finish_quiz(request):
     })
 
 
-
 # 🔹 LOGIN sahifasi
 def user_login(request):
     if request.user.is_authenticated:
@@ -526,13 +475,14 @@ def user_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        username = username.lower()
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
             messages.success(request, f"Xush kelibsiz, {user.username}!")
             return redirect('quiztype_list')
         else:
-            messages.error(request, "Login yoki parol noto‘g‘ri!")
+            messages.error(request, "Login yoki parol noto'g'ri!")
 
     return render(request, 'quiz/login.html')
 
@@ -544,19 +494,23 @@ def user_logout(request):
     return redirect('login')
 
 
-# 🔹 SIGNUP (ro‘yxatdan o‘tish)
+# 🔹 SIGNUP (ro'yxatdan o'tish)
 def user_signup(request):
     if request.user.is_authenticated:
         return redirect('quiztype_list')
 
     if request.method == 'POST':
-        username = request.POST.get('username')
+        input_username = request.POST.get('username')
         first_name = request.POST.get('firstname')
         last_name = request.POST.get('lastname')
         email = request.POST.get('email')
         password1 = request.POST.get('password1')
         password2 = request.POST.get('password2')
-
+        if chek_user(input_username):
+            username = input_username.lower()
+        else:
+            messages.error(request, "Foydalanuvchi nomi 3–20 belgi oralig'ida, faqat lotin harflari, raqamlar va '_' belgilardan iborat bo'lishi kerak!")
+            return redirect('signup')
         if password1 != password2:
             messages.error(request, "Parollar bir xil emas!")
             return redirect('signup')
@@ -567,23 +521,33 @@ def user_signup(request):
 
         user = User.objects.create_user(username=username, first_name=first_name, last_name=last_name, email=email, password=password1)
         login(request, user)
-        messages.success(request, "Muvaffaqiyatli ro‘yxatdan o‘tdingiz!")
+        messages.success(request, "Muvaffaqiyatli ro'yxatdan o'tdingiz!")
         return redirect('quiztype_list')
 
     return render(request, 'quiz/signup.html')
 
-def result_users(request, test):
-    user = request.user
 
-    # Foydalanuvchi javoblarini savollar bilan birgalikda olish
+def chek_user(username: str) -> bool:
+    if not isinstance(username, str):
+        return False
+    if len(username) < 3 or len(username) > 20:
+        return False
+    pattern = r'^[a-zA-Z0-9_]+$'
+    return bool(re.match(pattern, username))
+
+
+@login_required
+def result_users(request, quiz_id):
+    user = request.user
+    quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=user)
+
     my_tests = (
         AnswerUsers.objects
-        .filter(user=user, generate_quiz=test)
+        .filter(user=user, generate_quiz=quiz)
         .select_related('question', 'answer')
         .order_by('-id')
     )
 
-    # Yuqorida select_related ishlatilgani uchun bu joyda alohida so‘rov kerak emas
     question_ids = my_tests.values_list('question_id', flat=True)
     answer = Answer.objects.filter(question_id__in=question_ids)
 

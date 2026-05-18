@@ -1,24 +1,58 @@
 {% extends 'quiz/base.html' %}
+{% block title %}Word fayldan yuklash{% endblock %}
 {% block content %}
-<div class="container mt-5">
-  <h3>📤 Word fayldan savollarni import qilish</h3>
-  <hr>
-  {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-success">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-  <form method="post" enctype="multipart/form-data" class="mt-3">
-    {% csrf_token %}
-    <div class="mb-3">
-      <label class="form-label">{{ form.quiz_type.label }}</label>
-      {{ form.quiz_type }}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+
+        <h5 class="fw-bold mb-4">
+            <i class="bi bi-file-earmark-word text-primary me-2"></i>Word fayldan savollarni yuklash
+        </h5>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card p-4 mb-4">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-medium">{{ form.quiz_type.label }}</label>
+                    {{ form.quiz_type }}
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-medium">{{ form.file.label }}</label>
+                    {{ form.file }}
+                    <div class="form-text">Faqat <strong>.docx</strong> formatdagi fayllar qabul qilinadi</div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-upload me-2"></i>Yuklash
+                </button>
+            </form>
+        </div>
+
+        <div class="card p-4 bg-light border-0">
+            <h6 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Fayl formati</h6>
+            <p class="small text-muted mb-2">Word faylingiz quyidagi formatda bo'lishi kerak:</p>
+            <pre class="bg-white border rounded p-3 small mb-2">1. Savol matni
+A) Javob varianti
+*B) To'g'ri javob (* belgisi bilan)
+C) Javob varianti
+D) Javob varianti
+
+2. Keyingi savol matni
+...</pre>
+            <ul class="small text-muted mb-0 ps-3">
+                <li>Savollar <code>1.</code> <code>2.</code> kabi raqam va nuqta bilan boshlanishi kerak</li>
+                <li>To'g'ri javob oldiga <code>*</code> belgisi qo'ying</li>
+                <li>Bir savolda bir nechta to'g'ri javob bo'lishi mumkin</li>
+            </ul>
+        </div>
+
     </div>
-    <div class="mb-3">
-      <label class="form-label">{{ form.file.label }}</label>
-      {{ form.file }}
-    </div>
-    <button type="submit" class="btn btn-primary">Yuklash</button>
-  </form>
 </div>
 {% endblock %}

@@ -1,12 +1,29 @@
 {% extends 'quiz/base.html' %}
+{% block title %}Savolni o'chirish{% endblock %}
 {% block content %}
-<h2>O‘chirishni tasdiqlang</h2>
-<p><strong>{{ object.name }}</strong> savolini o‘chirishni xohlaysizmi?</p>
-<p>Javoblar ham o‘chadi!</p>
-
-<form method="post">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Ha, o‘chirish</button>
-    <a href="{% url 'question_list' %}" class="btn btn-secondary">Bekor qilish</a>
-</form>
+<div class="row justify-content-center mt-3">
+    <div class="col-md-5">
+        <div class="card border-danger p-4 text-center">
+            <i class="bi bi-exclamation-triangle-fill text-danger display-4 mb-3"></i>
+            <h5 class="fw-bold mb-2">Savolni o'chirishni tasdiqlang</h5>
+            <p class="text-muted mb-1">Quyidagi savolni o'chirmoqchimisiz?</p>
+            <p class="fw-semibold text-dark mb-4">« {{ object.name|truncatewords:12 }} »</p>
+            <div class="alert alert-warning text-start py-2 small mb-4">
+                <i class="bi bi-info-circle me-1"></i>
+                Bu savolga tegishli barcha javob variantlari ham o'chib ketadi!
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="bi bi-trash me-1"></i>Ha, o'chirish
+                    </button>
+                    <a href="{% url 'question_list' %}" class="btn btn-outline-secondary px-4">
+                        <i class="bi bi-x-lg me-1"></i>Bekor qilish
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -5,7 +5,10 @@ from quiz.models import GenerateQuizQuestion, AnswerUsers, GenerateQuiz
 def home(request):
     if request.user.is_authenticated:
         my_test = GenerateQuiz.objects.filter(user=request.user).order_by('-numbers')
-        context = {'my_test': my_test}
+
+        context = {
+            'my_test': my_test,
+        }
 
 
         return render(request, 'index.html', context)

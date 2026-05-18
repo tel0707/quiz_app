@@ -1,39 +1,57 @@
 {% extends 'quiz/base.html' %}
-
+{% block title %}Javoblarim{% endblock %}
 {% block content %}
-<div class="container mt-4">
-    <h2 class="text-center mb-4">🧾 Javoblaringiz</h2>
 
-    {% for test in my_tests %}
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <span><b>{{ forloop.counter }}.</b> {{ test.question }}</span>
-                <span class="badge bg-light text-primary">{{ test.quiz_type }}</span>
-            </div>
-            <div class="card-body">
-                {% for ans in answer %}
-                    {% if test.question == ans.question %}
-                        {% if ans.is_correct %}
-                            <p class="mb-2">
-                                ✅ <b class="text-success">{{ ans.name }}</b>
-                                <span class="badge bg-success ms-2">To‘g‘ri javob</span>
-                            </p>
-                        {% elif test.answer == ans %}
-                            <p class="mb-2">
-                                ❌ <b class="text-danger">{{ ans.name }}</b>
-                                <span class="badge bg-danger ms-2">Siz tanlagan</span>
-                            </p>
-                        {% else %}
-                            <p class="mb-2 text-muted">{{ ans.name }}</p>
-                        {% endif %}
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-    {% empty %}
-        <div class="alert alert-info text-center">
-            Sizda hozircha hech qanday test natijalari yo‘q.
-        </div>
-    {% endfor %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-primary"></i>Javoblarim</h4>
+    <a href="{% url 'quiztype_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Orqaga
+    </a>
 </div>
+
+{% for test in my_tests %}
+    <div class="card mb-3">
+        <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 py-3">
+            <span class="badge bg-primary rounded-pill">{{ forloop.counter }}</span>
+            <span class="fw-semibold">{{ test.question.name }}</span>
+        </div>
+        <div class="card-body py-3">
+            {% for ans in answer %}
+                {% if test.question == ans.question %}
+                    {% if ans.is_correct and test.answer == ans %}
+                        <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25">
+                            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                            <span class="fw-semibold text-success">{{ ans.name }}</span>
+                            <span class="badge bg-success ms-auto">To'g'ri ✓</span>
+                        </div>
+                    {% elif ans.is_correct %}
+                        <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25">
+                            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                            <span class="fw-semibold text-success">{{ ans.name }}</span>
+                            <span class="badge bg-success ms-auto">To'g'ri javob</span>
+                        </div>
+                    {% elif test.answer == ans %}
+                        <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded-3 bg-danger bg-opacity-10 border border-danger border-opacity-25">
+                            <i class="bi bi-x-circle-fill text-danger fs-5"></i>
+                            <span class="fw-semibold text-danger">{{ ans.name }}</span>
+                            <span class="badge bg-danger ms-auto">Siz tanladingiz ✗</span>
+                        </div>
+                    {% else %}
+                        <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded-3 bg-light">
+                            <i class="bi bi-circle text-muted fs-5"></i>
+                            <span class="text-muted">{{ ans.name }}</span>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% empty %}
+    <div class="card">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-inbox display-4 d-block mb-3"></i>
+            Hech qanday natija topilmadi.
+        </div>
+    </div>
+{% endfor %}
 {% endblock %}

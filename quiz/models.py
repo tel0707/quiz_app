@@ -1,5 +1,5 @@
 from datetime import datetime
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 
 
@@ -61,17 +61,26 @@ class GenerateQuiz(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.numbers:
-            year = datetime.now().year
-            last_quiz = GenerateQuiz.objects.filter(numbers__contains=f"Test-{year}-").order_by('-id').first()
-            last_num = 0
-            if last_quiz:
-                try:
-                    last_num = int(last_quiz.numbers.split('-')[-1])
-                except ValueError:
-                    pass
-            next_num = str(last_num + 1).zfill(6)
-            self.numbers = f"Test-{year}-{next_num}"
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                year = datetime.now().year
+                last_quiz = (
+                    GenerateQuiz.objects
+                    .select_for_update()
+                    .filter(numbers__startswith=f"Test-{year}-")
+                    .order_by('-id')
+                    .first()
+                )
+                last_num = 0
+                if last_quiz:
+                    try:
+                        last_num = int(last_quiz.numbers.split('-')[-1])
+                    except ValueError:
+                        pass
+                next_num = str(last_num + 1).zfill(6)
+                self.numbers = f"Test-{year}-{next_num}"
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
 
 # --- 5️⃣ Har bir testdagi savollar (ko‘p savollik test uchun oraliq model) ---
