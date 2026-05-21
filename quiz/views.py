@@ -15,6 +15,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 from django.db import transaction
 from django.utils import timezone
 from .models import QuizType, Question, Answer, GenerateQuiz, AnswerUsers, GenerateQuizQuestion
@@ -286,9 +288,9 @@ def upload_quiz_from_word(request):
 
 # 🔹 TESTNI BOSHLASH
 @login_required
-def generate_quiz(request, pk):
+def generate_quiz(request, slug):
     n = int(request.GET.get("count", 10))
-    quiz_type = get_object_or_404(QuizType, pk=pk)
+    quiz_type = get_object_or_404(QuizType, slug=slug)
 
     question_ids = list(
         Question.objects.filter(is_active=True, quiz_type_id=pk)
@@ -318,13 +320,13 @@ def generate_quiz(request, pk):
             for qid in selected_q_ids
         ])
 
-    return redirect('quiz_page', quiz_id=quiz.id, page=1)
+    return redirect('quiz_page', quiz_slug=quiz.numbers, page=1)
 
 
 # 🔹 SAVOLLARNI KO'RISH (har biri alohida sahifada)
 @login_required
-def quiz_page(request, quiz_id, page):
-    quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+def quiz_page(request, quiz_slug, page):
+    quiz = get_object_or_404(GenerateQuiz, numbers=quiz_slug, user=request.user)
 
     if quiz.finished:
         messages.info(request, "Bu test allaqachon yakunlangan.")
@@ -587,11 +589,81 @@ def all_quiz_results(request):
 
 
 @login_required
-def result_users(request, quiz_id):
+def export_results_excel(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Bu amalni faqat administrator bajarishi mumkin.")
+        return redirect('quiztype_list')
+
+    qs = (
+        GenerateQuiz.objects
+        .filter(finished__isnull=False)
+        .select_related('user', 'quiz_type')
+        .order_by('-finished')
+    )
+
+    search = request.GET.get('q', '').strip()
+    if search:
+        qs = (
+            qs.filter(user__username__icontains=search) |
+            qs.filter(user__first_name__icontains=search) |
+            qs.filter(user__last_name__icontains=search)
+        ).order_by('-finished')
+
+    quiz_type_id = request.GET.get('quiz_type', '')
+    if quiz_type_id:
+        qs = qs.filter(quiz_type_id=quiz_type_id)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Natijalar"
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(fill_type="solid", fgColor="2563EB")
+    center = Alignment(horizontal="center", vertical="center")
+
+    headers = ["#", "To'liq ism", "Username", "Test raqami", "Test turi", "Natija (%)", "Yakunlangan vaqt"]
+    col_widths = [5, 25, 18, 20, 25, 14, 22]
+
+    for col_num, (header, width) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+        ws.column_dimensions[cell.column_letter].width = width
+
+    ws.row_dimensions[1].height = 20
+
+    for row_num, quiz in enumerate(qs, 1):
+        full_name = quiz.user.get_full_name() or quiz.user.username
+        finished_str = quiz.finished.strftime("%d.%m.%Y %H:%M") if quiz.finished else ""
+        row = [
+            row_num,
+            full_name,
+            quiz.user.username,
+            quiz.numbers,
+            quiz.quiz_type.name,
+            quiz.score,
+            finished_str,
+        ]
+        for col_num, value in enumerate(row, 1):
+            cell = ws.cell(row=row_num + 1, column=col_num, value=value)
+            if col_num in (1, 6):
+                cell.alignment = center
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="quiz_natijalar.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def result_users(request, quiz_slug):
     if request.user.is_superuser:
-        quiz = get_object_or_404(GenerateQuiz, id=quiz_id)
+        quiz = get_object_or_404(GenerateQuiz, numbers=quiz_slug)
     else:
-        quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+        quiz = get_object_or_404(GenerateQuiz, numbers=quiz_slug, user=request.user)
 
     quiz_user = quiz.user
 

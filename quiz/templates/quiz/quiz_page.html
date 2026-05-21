@@ -118,7 +118,7 @@
             {% for num in paginator.page_range %}
                 <li class="page-item">
                     <a class="page-link {% if page_obj.number == num %}active{% endif %}"
-                       href="{% url 'quiz_page' quiz_id=quiz.id page=num %}"
+                       href="{% url 'quiz_page' quiz_slug=quiz.numbers page=num %}"
                        id="page-{{ num }}">{{ num }}</a>
                 </li>
             {% endfor %}
@@ -196,7 +196,7 @@
                     const cur = {{ page_obj.number }};
                     if (cur < totalPages) {
                         setTimeout(() => {
-                            location.href = "{% url 'quiz_page' quiz_id=quiz.id page=1 %}"
+                            location.href = "{% url 'quiz_page' quiz_slug=quiz.numbers page=1 %}"
                                 .replace('/1/', '/' + (cur + 1) + '/');
                         }, 300);
                     } else {

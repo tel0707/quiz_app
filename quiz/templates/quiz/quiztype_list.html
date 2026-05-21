@@ -80,7 +80,7 @@
                 </div>
 
                 <!-- Start form -->
-                <form action="{% url 'start_quiz' qt.pk %}" method="get">
+                <form action="{% url 'start_quiz' qt.slug %}" method="get">
                     <div class="d-flex align-items-center gap-2 mb-3">
                         <label class="text-muted small text-nowrap" for="count_{{ qt.pk }}">
                             <i class="bi bi-hash"></i> Savollar soni:
@@ -101,10 +101,10 @@
                 <!-- Superuser actions -->
                 {% if user.is_superuser %}
                 <div class="d-flex gap-2 mt-3 pt-3 border-top">
-                    <a href="{% url 'quiztype_edit' qt.pk %}" class="btn btn-sm btn-outline-warning flex-fill">
+                    <a href="{% url 'quiztype_edit' qt.slug %}" class="btn btn-sm btn-outline-warning flex-fill">
                         <i class="bi bi-pencil me-1"></i>Tahrirlash
                     </a>
-                    <a href="{% url 'quiztype_delete' qt.pk %}" class="btn btn-sm btn-outline-danger flex-fill">
+                    <a href="{% url 'quiztype_delete' qt.slug %}" class="btn btn-sm btn-outline-danger flex-fill">
                         <i class="bi bi-trash me-1"></i>O'chirish
                     </a>
                 </div>

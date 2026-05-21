@@ -33,11 +33,11 @@
             </td>
             {% if user.is_superuser %}
                 <td class="text-center">
-                    <a href="{% url 'question_edit' q.pk %}"
+                    <a href="{% url 'question_edit' q.slug %}"
                        class="btn btn-sm btn-warning">Tahrirlash</a>
                 </td>
                 <td class="text-center">
-                    <a href="{% url 'question_delete' q.pk %}"
+                    <a href="{% url 'question_delete' q.slug %}"
                        class="btn btn-sm btn-danger"
                        onclick="return confirm('{{ q.name|escapejs|truncatewords:5 }} savolini o'chirmoqchimisiz?')">
                        O'chirish</a>

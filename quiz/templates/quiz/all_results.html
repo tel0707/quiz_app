@@ -44,6 +44,10 @@
         </h4>
         <p class="text-muted small mb-0">Yakunlangan testlar — {{ page_obj.paginator.count }} ta</p>
     </div>
+    <a href="{% url 'export_results_excel' %}?q={{ search }}&quiz_type={{ selected_quiz_type }}"
+       class="btn btn-success btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i>Excel yuklab olish
+    </a>
 </div>
 
 <!-- Filters -->
@@ -126,7 +130,7 @@
                     </td>
                     <td class="text-muted small">{{ quiz.finished|date:"d.m.Y H:i" }}</td>
                     <td class="text-end pe-3">
-                        <a href="{% url 'result_users' quiz.pk %}" class="btn btn-outline-primary btn-sm">
+                        <a href="{% url 'result_users' quiz.numbers %}" class="btn btn-outline-primary btn-sm">
                             <i class="bi bi-eye me-1"></i>Ko'rish
                         </a>
                     </td>

@@ -1,12 +1,24 @@
 from datetime import datetime
 from django.db import models, transaction
 from django.contrib.auth.models import User
+from django.utils.text import slugify
 
 
 # --- 1️⃣ Test turlari ---
 class QuizType(models.Model):
     name = models.CharField(max_length=200)
     is_active = models.BooleanField(default=True)
+    slug = models.SlugField(max_length=220, unique=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug, n = base, 1
+            while QuizType.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{n}"
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -18,6 +30,17 @@ class Question(models.Model):
     name = models.CharField(max_length=1000)
     is_active = models.BooleanField(default=True)
     is_multiple_choice = models.BooleanField(default=False)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)[:80]
+            slug, n = base, 1
+            while Question.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{n}"
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
