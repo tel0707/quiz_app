@@ -14,7 +14,7 @@ import random, json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db import transaction
 from django.utils import timezone
 from .models import QuizType, Question, Answer, GenerateQuiz, AnswerUsers, GenerateQuizQuestion
@@ -325,6 +325,11 @@ def generate_quiz(request, pk):
 @login_required
 def quiz_page(request, quiz_id, page):
     quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+
+    if quiz.finished:
+        messages.info(request, "Bu test allaqachon yakunlangan.")
+        return redirect('quiztype_list')
+
     selected_q_ids = request.session.get('selected_q_ids', [])
 
     questions = Question.objects.filter(id__in=selected_q_ids, is_active=True).prefetch_related(
@@ -385,7 +390,10 @@ def quiz_page(request, quiz_id, page):
         'shuffled_answers': shuffled_answers,
         'selected_answer_id': selected_answer_id,
     }
-    return render(request, 'quiz/quiz_page.html', context)
+    response = render(request, 'quiz/quiz_page.html', context)
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    return response
 
 
 # 🔹 AJAX ORQALI JAVOBNI SAQLASH
@@ -402,6 +410,10 @@ def save_answer(request):
                 return JsonResponse({"success": False, "error": "Sessiya yo'qolgan"}, status=400)
 
             quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+
+            if quiz.finished:
+                return JsonResponse({"success": False, "error": "Test allaqachon yakunlangan"}, status=400)
+
             question = get_object_or_404(Question, id=q_id)
             answer = get_object_or_404(Answer, id=a_id, question=question)
 
@@ -458,13 +470,16 @@ def finish_quiz(request):
     for key in ['quiz_id', 'selected_q_ids', 'quiz_start_time', 'answer_orders']:
         request.session.pop(key, None)
 
-    return render(request, 'quiz/quiz_result.html', {
+    response = render(request, 'quiz/quiz_result.html', {
         'quiz': quiz,
         'total': total_questions,
         'answered': answers.count(),
         'correct': correct,
         'percent': quiz.score,
     })
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    return response
 
 
 # 🔹 LOGIN sahifasi
