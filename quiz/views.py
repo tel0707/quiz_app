@@ -552,13 +552,52 @@ def chek_user(username: str) -> bool:
 
 
 @login_required
+def all_quiz_results(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Bu sahifaga faqat administrator kirishi mumkin.")
+        return redirect('quiztype_list')
+
+    qs = (
+        GenerateQuiz.objects
+        .filter(finished__isnull=False)
+        .select_related('user', 'quiz_type')
+        .order_by('-finished')
+    )
+
+    search = request.GET.get('q', '').strip()
+    if search:
+        qs = qs.filter(user__username__icontains=search) | qs.filter(user__first_name__icontains=search) | qs.filter(user__last_name__icontains=search)
+        qs = qs.order_by('-finished')
+
+    quiz_type_id = request.GET.get('quiz_type', '')
+    if quiz_type_id:
+        qs = qs.filter(quiz_type_id=quiz_type_id)
+
+    paginator = Paginator(qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    quiz_types = QuizType.objects.filter(is_active=True).order_by('name')
+
+    return render(request, 'quiz/all_results.html', {
+        'page_obj': page_obj,
+        'search': search,
+        'quiz_types': quiz_types,
+        'selected_quiz_type': quiz_type_id,
+    })
+
+
+@login_required
 def result_users(request, quiz_id):
-    user = request.user
-    quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=user)
+    if request.user.is_superuser:
+        quiz = get_object_or_404(GenerateQuiz, id=quiz_id)
+    else:
+        quiz = get_object_or_404(GenerateQuiz, id=quiz_id, user=request.user)
+
+    quiz_user = quiz.user
 
     my_tests = (
         AnswerUsers.objects
-        .filter(user=user, generate_quiz=quiz)
+        .filter(user=quiz_user, generate_quiz=quiz)
         .select_related('question', 'answer')
         .order_by('-id')
     )
@@ -567,7 +606,7 @@ def result_users(request, quiz_id):
     answer = Answer.objects.filter(question_id__in=question_ids)
 
     context = {
-        'user': user,
+        'user': quiz_user,
         'my_tests': my_tests,
         'answer': answer,
     }

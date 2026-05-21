@@ -1,0 +1,196 @@
+{% extends 'quiz/base.html' %}
+{% block title %}Barcha natijalar{% endblock %}
+
+{% block extra_css %}
+<style>
+    .score-badge {
+        min-width: 60px;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 20px;
+    }
+    .avatar {
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .filter-form .form-control,
+    .filter-form .form-select {
+        border-radius: 8px;
+        border: 1.5px solid #e5e7eb;
+        font-size: 14px;
+    }
+    .filter-form .btn { border-radius: 8px; font-size: 14px; }
+    .page-link { border-radius: 8px !important; margin: 2px; }
+    .page-item.active .page-link { background: #2563eb; border-color: #2563eb; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">
+            <i class="bi bi-people-fill me-2 text-primary"></i>Barcha foydalanuvchilar natijalari
+        </h4>
+        <p class="text-muted small mb-0">Yakunlangan testlar — {{ page_obj.paginator.count }} ta</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" class="filter-form card p-3 mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small text-muted mb-1">Foydalanuvchi nomi bo'yicha qidirish</label>
+            <input type="text" name="q" value="{{ search }}" class="form-control"
+                   placeholder="Ism yoki username...">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">Test turi</label>
+            <select name="quiz_type" class="form-select">
+                <option value="">— Barchasi —</option>
+                {% for qt in quiz_types %}
+                <option value="{{ qt.pk }}" {% if selected_quiz_type == qt.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ qt.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-fill">
+                <i class="bi bi-search me-1"></i>Qidirish
+            </button>
+            <a href="{% url 'all_quiz_results' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg"></i>
+            </a>
+        </div>
+    </div>
+</form>
+
+<!-- Table -->
+{% if page_obj.object_list %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">#</th>
+                    <th>Foydalanuvchi</th>
+                    <th>Test raqami</th>
+                    <th>Test turi</th>
+                    <th class="text-center">Natija</th>
+                    <th>Yakunlangan vaqt</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quiz in page_obj %}
+                <tr>
+                    <td class="ps-4 text-muted small">
+                        {{ page_obj.start_index|add:forloop.counter0 }}
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar">
+                                {{ quiz.user.first_name|first|upper|default:quiz.user.username|first|upper }}
+                            </div>
+                            <div>
+                                <div class="fw-semibold lh-1">
+                                    {{ quiz.user.get_full_name|default:quiz.user.username }}
+                                </div>
+                                <div class="text-muted small">@{{ quiz.user.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="fw-semibold text-primary">{{ quiz.numbers }}</span>
+                    </td>
+                    <td>{{ quiz.quiz_type.name }}</td>
+                    <td class="text-center">
+                        <span class="score-badge
+                            {% if quiz.score >= 86 %}bg-success text-white
+                            {% elif quiz.score >= 71 %}bg-primary text-white
+                            {% elif quiz.score >= 56 %}bg-warning text-dark
+                            {% else %}bg-danger text-white{% endif %}">
+                            {{ quiz.score }}%
+                        </span>
+                    </td>
+                    <td class="text-muted small">{{ quiz.finished|date:"d.m.Y H:i" }}</td>
+                    <td class="text-end pe-3">
+                        <a href="{% url 'result_users' quiz.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-eye me-1"></i>Ko'rish
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search }}&quiz_type={{ selected_quiz_type }}">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+        </li>
+        {% endif %}
+
+        {% for i in page_obj.paginator.page_range %}
+            {% if page_obj.number == i %}
+                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+            {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ i }}&q={{ search }}&quiz_type={{ selected_quiz_type }}">{{ i }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search }}&quiz_type={{ selected_quiz_type }}">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-inbox display-3 text-muted d-block mb-3"></i>
+        <h5 class="text-muted">
+            {% if search or selected_quiz_type %}
+                Qidiruv bo'yicha natija topilmadi
+            {% else %}
+                Hali birorta test yakunlanmagan
+            {% endif %}
+        </h5>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

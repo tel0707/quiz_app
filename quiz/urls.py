@@ -18,6 +18,7 @@ urlpatterns = [
     path('quiz/save-answer/', views.save_answer, name='save_answer'),
     path('quiz/finish/', views.finish_quiz, name='finish_quiz'),
     path('result_users/<int:quiz_id>/', views.result_users, name='result_users'),
+    path('all-results/', views.all_quiz_results, name='all_quiz_results'),
 # Auth
     path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='logout'),
