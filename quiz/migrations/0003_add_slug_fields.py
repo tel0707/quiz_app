@@ -5,7 +5,7 @@ from django.utils.text import slugify
 def populate_slugs(apps, schema_editor):
     QuizType = apps.get_model('quiz', 'QuizType')
     for obj in QuizType.objects.all():
-        base = slugify(obj.name)
+        base = slugify(obj.name) or f"quiztype-{obj.pk}"
         slug, n = base, 1
         while QuizType.objects.filter(slug=slug).exclude(pk=obj.pk).exists():
             slug = f"{base}-{n}"
@@ -15,7 +15,7 @@ def populate_slugs(apps, schema_editor):
 
     Question = apps.get_model('quiz', 'Question')
     for obj in Question.objects.all():
-        base = slugify(obj.name)[:80]
+        base = slugify(obj.name)[:80] or f"question-{obj.pk}"
         slug, n = base, 1
         while Question.objects.filter(slug=slug).exclude(pk=obj.pk).exists():
             slug = f"{base}-{n}"

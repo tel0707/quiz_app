@@ -243,6 +243,20 @@ def upload_quiz_from_word(request):
                     for q_text, _ in valid_blocks
                 ])
 
+                # bulk_create does not call save(), so slugs must be generated manually
+                existing_slugs = set(Question.objects.values_list('slug', flat=True))
+                slugs_to_assign = []
+                for q in created_questions:
+                    base = slugify(q.name)[:80] or f"question-{q.pk or random.randint(10000,99999)}"
+                    slug, n = base, 1
+                    while slug in existing_slugs:
+                        slug = f"{base}-{n}"
+                        n += 1
+                    existing_slugs.add(slug)
+                    q.slug = slug
+                    slugs_to_assign.append(q)
+                Question.objects.bulk_update(slugs_to_assign, ['slug'])
+
                 answers_to_create = []
                 questions_to_update = []
                 for question, (_, answers) in zip(created_questions, valid_blocks):

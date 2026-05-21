@@ -2,6 +2,7 @@ from datetime import datetime
 from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+import uuid
 
 
 # --- 1️⃣ Test turlari ---
@@ -11,8 +12,8 @@ class QuizType(models.Model):
     slug = models.SlugField(max_length=220, unique=True, blank=True)
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            base = slugify(self.name)
+        if not self.slug and not kwargs.get('update_fields'):
+            base = slugify(self.name) or f"quiztype-{self.pk or uuid.uuid4().hex[:8]}"
             slug, n = base, 1
             while QuizType.objects.filter(slug=slug).exclude(pk=self.pk).exists():
                 slug = f"{base}-{n}"
@@ -33,8 +34,8 @@ class Question(models.Model):
     slug = models.SlugField(max_length=100, unique=True, blank=True)
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            base = slugify(self.name)[:80]
+        if not self.slug and not kwargs.get('update_fields'):
+            base = slugify(self.name)[:80] or f"question-{self.pk or uuid.uuid4().hex[:8]}"
             slug, n = base, 1
             while Question.objects.filter(slug=slug).exclude(pk=self.pk).exists():
                 slug = f"{base}-{n}"
