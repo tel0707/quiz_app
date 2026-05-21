@@ -307,7 +307,7 @@ def generate_quiz(request, slug):
     quiz_type = get_object_or_404(QuizType, slug=slug)
 
     question_ids = list(
-        Question.objects.filter(is_active=True, quiz_type_id=pk)
+        Question.objects.filter(is_active=True, quiz_type_id=quiz_type.id)
         .values_list('id', flat=True)
     )
     if not question_ids:
